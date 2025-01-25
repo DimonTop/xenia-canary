@@ -141,13 +141,16 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
                                      ->profile_manager()
                                      ->SignedInProfilesCount();
 
-      return XSession::GetSessions(memory_, data, num_users);
+      const auto xlast =
+          kernel_state_->emulator()->game_info_database()->GetXLast();
+
+      return XSession::GetSessions(kernel_state_, data, num_users);
     }
     case 0x000B001C: {
       XELOGI("XSessionSearchEx");
       XSessionSearchEx* data = reinterpret_cast<XSessionSearchEx*>(buffer);
 
-      return XSession::GetSessions(memory_, &data->session_search,
+      return XSession::GetSessions(kernel_state_, &data->session_search,
                                    data->num_users);
     }
     case 0x000B001D: {
@@ -456,10 +459,17 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
             user->xuid(), xgi_context->context.context_id,
             xgi_context->context.value);
 
-        if (xgi_context->context.context_id == X_CONTEXT_PRESENCE) {
-          auto presence = user->GetPresenceString();
+        user->UpdatePresence();
+
+        std::u16string context_desc =
+            kernel_state()->xam_state()->user_tracker()->GetContextDescription(
+                user->xuid(), xgi_context->context.context_id);
+
+        if (!context_desc.empty()) {
+          XELOGD("Set {}", xe::to_utf8(context_desc));
         }
       }
+
       return X_E_SUCCESS;
     }
     case 0x000B0007: {
@@ -489,6 +499,16 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
 
         kernel_state_->xam_state()->user_tracker()->AddProperty(user->xuid(),
                                                                 &property);
+
+        user->UpdatePresence();
+
+        std::u16string property_desc =
+            kernel_state_->xam_state()->user_tracker()->GetPropertyDescription(
+                xgi_property->property_id);
+
+        if (!property_desc.empty()) {
+          XELOGD("Set {}", xe::to_utf8(property_desc));
+        }
       }
       return X_E_SUCCESS;
     }
@@ -676,7 +696,7 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
                                      ->profile_manager()
                                      ->SignedInProfilesCount();
 
-      return XSession::GetWeightedSessions(memory_, data, num_users);
+      return XSession::GetWeightedSessions(kernel_state_, data, num_users);
     }
     case 0x000B0026: {
       XELOGI("XSessionFlushStats unimplemented");
