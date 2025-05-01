@@ -78,6 +78,7 @@ namespace xe {
 #define X_STORAGE_MAX_RESULTS_TO_RETURN             256
 #define X_ONLINE_MAX_XSTRING_VERIFY_LOCALE          512
 #define X_ONLINE_MAX_XSTRING_VERIFY_STRING_DATA     10
+#define X_ONLINE_MAX_XINVITE_DISPLAY_STRING         255
 
 #define X_CONTEXT_PRESENCE                          0x00008001
 #define X_CONTEXT_GAME_TYPE                         0x0000800A
@@ -136,6 +137,7 @@ constexpr uint8_t kXUserMaxStatsAttributes = 64;
 constexpr uint32_t kTMSUserMaxSize = 8192;          // 8 KB
 constexpr uint32_t kTMSTitleMaxSize = 1048576 * 5;  // 5 MB
 constexpr uint32_t kTMSClipMaxSize = 1048576 * 11;  // 11 MB
+constexpr uint32_t kTMSFileMaxSize = 1048576 * 20;  // 20 MB
 
 enum NETWORK_MODE : uint32_t { OFFLINE, LAN, XBOXLIVE };
 
@@ -594,104 +596,93 @@ struct X_DATA_ARGS_50097 {
 
 #pragma pack(pop)
 
-struct Internal_Marshalled_Data {
-  uint8_t unkn1_data[22];
-  xe::be<uint32_t> start_args_ptr;  // CArgumentList*
-  uint8_t unkn2_data[14];
+struct SCHEMA_HEADER {
+  xe::be<uint16_t> SchemaVersionMajor;
+  xe::be<uint16_t> SchemaVersionMinor;
+  xe::be<uint32_t> ToolVersion;
+  xe::be<uint32_t> Flags;
+  xe::be<uint32_t> CompressedSize;
+  xe::be<uint32_t> UncompressedSize;
+  xe::be<uint32_t> ConstantsTableOffset;
+  xe::be<uint16_t> ConstantsTableSize;
+  xe::be<uint16_t> ConstantSize;
+  xe::be<uint32_t> UrlTableOffset;
+  xe::be<uint16_t> UrlTableSize;
+  xe::be<uint16_t> UrlTableDataSize;
+  xe::be<uint16_t> HeaderSize;
+  xe::be<uint16_t> ExtensionDataSize;
+  xe::be<uint16_t> SchemaTableEntries;
+  xe::be<uint16_t> SchemaTableEntrySize;
+};
+static_assert_size(SCHEMA_HEADER, 0x2C);
+
+struct ORDINAL_TO_INDEX {
+  xe::be<uint16_t> Ordinal;
+  xe::be<uint16_t> Index;
+};
+static_assert_size(ORDINAL_TO_INDEX, 0x4);
+
+struct SCHEMA_TABLE_ENTRY {
+  xe::be<uint16_t> RequestSchemaSize;
+  xe::be<uint16_t> ResponseSchemaSize;
+  xe::be<uint32_t> RequestSchemaOffset;
+  xe::be<uint32_t> ResponseSchemaOffset;
+  xe::be<uint32_t> MaxRequestAggregateSize;
+  xe::be<uint32_t> MaxResponseAggregateSize;
+  xe::be<uint16_t> ServiceIDIndex;
+  xe::be<uint16_t> RequestUrlIndex;
+};
+static_assert_size(SCHEMA_TABLE_ENTRY, 0x18);
+
+struct SCHEMA_DATA {
+  SCHEMA_HEADER Header;
+  xe::be<uint32_t> OrdinalToIndexPtr;
+  xe::be<uint32_t> TableEntriesPtr;
+  xe::be<uint32_t> SchemaDataPtr;
+  xe::be<uint32_t> SchemaDataSize;
+  xe::be<uint32_t> ExtensionDataPtr;
+  xe::be<uint32_t> ConstantListPtr;
+  xe::be<uint32_t> UrlOffsetsPtr;
+  xe::be<uint32_t> UrlDataPtr;
+};
+static_assert_size(SCHEMA_DATA, 0x4C);
+
+struct BASE_ENDIAN_BUFFER {
+  xe::be<uint32_t> BufferPtr;
+  xe::be<uint32_t> BufferSize;
+  xe::be<uint32_t> AvailableSize;
+  xe::be<uint32_t> ConsumedSize;
+  xe::be<int32_t> ReverseEndian;
+};
+static_assert_size(BASE_ENDIAN_BUFFER, 0x14);
+
+struct XLIVE_ASYNC_TASK {
+  xe::be<uint32_t> ordinal;
+  xe::be<uint32_t> schema_data_ptr;  // SchemaData*
+  xe::be<uint32_t> schema_index;
+  xe::be<uint32_t> task_flags;
+  xe::be<uint32_t> live_async_task_internal_ptr;  // XLiveAsyncTaskInternal*
+  xe::be<uint32_t> internal_task_size;
+  xe::be<uint32_t> marshalled_request_ptr;
+  xe::be<uint32_t> marshalled_request_size;
+  xe::be<uint32_t> total_wire_buffe_size;
+  xe::be<uint32_t> counter;
+  xe::be<uint32_t> logon_id;
   xe::be<uint32_t> results_ptr;  // STRUCT*
   xe::be<uint32_t> results_size;
+  BASE_ENDIAN_BUFFER wire_buffer;
+  xe::be<uint32_t> overlapped_ptr;
 };
+static_assert_size(XLIVE_ASYNC_TASK, 0x4C);
 
-struct Generic_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> unkn2_ptr;
-  uint8_t unkn3_data[12];
-  xe::be<uint32_t> unkn3_ptr;
-  uint8_t unkn4_data[12];
-  xe::be<uint32_t> unkn4_ptr;
+struct XLIVEBASE_ASYNC_MESSAGE {
+  xe::be<uint32_t> xlive_async_task_ptr;
+  xe::be<uint64_t> current_numerator;
+  xe::be<uint64_t> current_denominator;
+  xe::be<uint64_t> last_numerator;
+  xe::be<uint64_t> last_denominator;
 };
-
-struct XStorageDelete_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> serialized_server_path_ptr;  // Entry 1
-};
-
-struct XStringVerify_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> locale_size_ptr;
-  uint8_t unkn3_data[12];
-  xe::be<uint32_t> num_strings_ptr;
-  uint8_t unkn4_data[12];
-  xe::be<uint32_t> last_entry_ptr;
-};
-
-struct XStorageDownloadToMemory_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> serialized_server_path_ptr;  // Entry 1
-  uint8_t unkn3_data[12];
-  xe::be<uint32_t> serialized_buffer_ptr;  // Entry 2
-};
-
-struct XStorageUploadFromMemory_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> serialized_server_path_ptr;  // Entry 1
-  uint8_t unkn3_data[12];
-  xe::be<uint32_t> serialized_buffer_ptr;  // Entry 2
-};
-
-struct XStorageEnumerate_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> serialized_server_path_ptr;  // Entry 1
-  xe::be<uint32_t> locale_size_ptr;
-  uint8_t unkn3_data[12];
-  xe::be<uint32_t> num_strings_ptr;
-  uint8_t unkn4_data[12];
-  xe::be<uint32_t> last_entry_ptr;
-};
-
-struct XUserFindUsers_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> empty;  // Entry 1
-  uint8_t unkn3_data[12];
-  xe::be<uint32_t> serialized_users_info_ptr;  // Entry 2
-};
-
-struct XAccountGetUserInfo_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-};
-
-struct XOnlineQuerySearch_Marshalled_Data {
-  xe::be<uint32_t> internal_data_ptr;
-  uint8_t unkn1_data[44];
-  xe::be<uint32_t> unkn1_ptr;
-  uint8_t unkn2_data[24];
-  xe::be<uint32_t> serialized_num_result_specs_ptr;  // Entry 1
-  uint8_t unkn3_data[24];
-  xe::be<uint32_t> serialized_attribute_specs_ptr;  // Entry 2
-};
+static_assert_size(XLIVEBASE_ASYNC_MESSAGE, 0x28);
 
 struct XOnlineQuerySearch_Args {
   uint32_t title_id;
