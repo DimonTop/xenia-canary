@@ -56,6 +56,10 @@ bool LeaderboardObjectJSON::Serialize(
       writer->Int(static_cast<uint32_t>(stat.data.type));
 
       switch (stat.data.type) {
+        case xam::X_USER_DATA_TYPE::CONTEXT: {
+          writer->Key("value");
+          writer->Uint64(stat.data.data.filetime);
+        } break;
         case xam::X_USER_DATA_TYPE::INT32: {
           writer->String("value");
           writer->Uint(stat.data.data.s32);
